@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from google.cloud import storage
 from google.cloud import datastore
 
+
 app = Flask(__name__)   
 CLOUD_STORAGE_BUCKET = "book-library-12" 
 
@@ -22,12 +23,13 @@ def books():
         books_entities = list(query.fetch())
         author = request.args.get('author')
         language = request.args.get('language')
+        title = request.args.get('title')
 
         json_array = []
         for book in books_entities:
-            if author and author != book['author']:
+            if author and author not in book['author']:
                 continue
-            if language and language != book['language']:
+            if language and language not in book['language']:
                 continue
             obj = {}
             obj['title'] = book['title']
@@ -47,6 +49,8 @@ def getbook(isbn):
     try:
         datastore_client = datastore.Client.from_service_account_json('book-libraray-12-c9a3ffe8fdc7.json')
         query = datastore_client.query(kind='Books', )
+        if len(books_entities) == 0:
+            return "Book not found.", 404
         query.add_filter("isbn", "=", str(isbn))
         books_entities = list(query.fetch())
         if len(books_entities) == 0:
@@ -70,6 +74,10 @@ def putbook(isbn):
     try:
         datastore_client = datastore.Client.from_service_account_json('book-libraray-12-c9a3ffe8fdc7.json')
         query = datastore_client.query(kind='Books', )
+
+        if len(isbn) != 13:
+            return 'invalid isbn', 406
+
         query.add_filter("isbn", "=", str(isbn))
         books_entities = list(query.fetch())
         if len(books_entities) == 0:
@@ -122,10 +130,9 @@ def dealPost(request, isbn=None):
             return 'invalid isbn', 406
         
         datastore_client = datastore.Client.from_service_account_json('book-libraray-12-c9a3ffe8fdc7.json')
+        
         kind = 'Books'
-        # name/id for the new entity
         name = isbn
-        # Create the cloud datastore key for the new entity
         key = datastore_client.key(kind, name)
 
         entity = datastore.Entity(key)
